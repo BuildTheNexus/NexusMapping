@@ -1,5 +1,22 @@
 {
-	"dependencies": {
-		"dotenv-cli": "^10.0.0"
-	}
+  "name": "nexusmapping",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names \"ADMIN,WORKER\" -c \"bgMagenta.bold,bgGreen.bold\" \"pnpm --filter nexusmapping-admin dev\" \"pnpm --filter nexusmapping-api dev\"",
+    "build": "pnpm --filter \"./apps/**\" build"
+  },
+  "dependencies": {
+    "dotenv-cli": "^10.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd",
+      "@tailwindcss/oxide"
+    ]
+  }
 }
