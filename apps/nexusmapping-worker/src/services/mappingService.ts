@@ -27,3 +27,36 @@ export async function createMapPoint(
 
   return newPoint;
 }
+
+/**
+ * Retrieves all map points from the database.
+ * @param db The D1Database instance.
+ * @returns A promise that resolves to an array of MapPoint objects.
+ */
+export async function getAllMapPoints(db: D1Database): Promise<MapPoint[]> {
+  try {
+    const stmt = db.prepare('SELECT * FROM map_points ORDER BY timestamp DESC');
+    const { results } = await stmt.all<MapPoint>();
+    return results;
+  } catch (error) {
+    console.error('D1 Database Error in getAllMapPoints:', error);
+    throw new Error('Failed to fetch map points from the database.');
+  }
+}
+
+/**
+ * Retrieves a single map point by its ID.
+ * @param db The D1Database instance.
+ * @param pointId The ID of the point to retrieve.
+ * @returns A promise that resolves to a MapPoint object, or null if not found.
+ */
+export async function getMapPointById(db: D1Database, pointId: string): Promise<MapPoint | null> {
+  try {
+    const stmt = db.prepare('SELECT * FROM map_points WHERE pointId = ?1');
+    const result = await stmt.bind(pointId).first<MapPoint>();
+    return result;
+  } catch (error) {
+    console.error(`D1 Database Error in getMapPointById for ID ${pointId}:`, error);
+    throw new Error('Failed to fetch map point from the database.');
+  }
+}
