@@ -1,0 +1,26 @@
+{
+	"name": "nexusmapping-api",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev --port 8788",
+		"check": "tsc --noEmit",
+		"start": "wrangler dev --port 8788",
+		"test": "vitest",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"@cloudflare/workers-types": "^4.20250801.0",
+		"dotenv-cli": "^7.4.2",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.27.0"
+	},
+	"dependencies": {
+		"hono": "^4.8.10",
+		"jose": "^6.0.12"
+	}
+}
