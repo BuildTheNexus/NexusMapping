@@ -1,16 +1,37 @@
-import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from '../../$types';
+import type { PageServerLoad } from './$types';
+import type { MapPoint } from '../../../../../nexusmapping-worker/src/types';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// We get the session data that was loaded by our root layout.
-	const session = await locals.auth();
+const WORKER_API_URL = 'http://127.0.0.1:8788/api/map-points';
 
-	// If a session exists, the user is logged in.
-	if (session) {
-		// Redirect them to the primary user interface.
-		throw redirect(303, '/dashboard/map');
+interface ApiResponse {
+	success: boolean;
+	points?: MapPoint[];
+	message?: string;
+}
+
+export const load: PageServerLoad = async () => {
+	// We don't need to check for a session here, the layout guard handles it.
+	try {
+		const response = await fetch(WORKER_API_URL);
+
+		if (!response.ok) {
+			return {
+				points: [],
+				error: `API responded with status: ${response.status}`
+			};
+		}
+
+		const data: ApiResponse = await response.json();
+
+		if (!data.success || !data.points) {
+			return { points: [], error: data.message || 'API error.' };
+		}
+
+		return { points: data.points };
+	} catch (error) {
+		return {
+			points: [],
+			error: 'Could not connect to the API worker. Is it running?'
+		};
 	}
-
-	// If no session exists, send them to the login page.
-	throw redirect(303, '/login');
 };
