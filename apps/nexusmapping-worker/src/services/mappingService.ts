@@ -1,5 +1,5 @@
 // File: apps/nexusmapping-worker/src/services/mappingService.ts
-import type { MapPoint } from '../types';
+import type { MapPoint, UpdatePayload } from '../types'; // <-- 1. IMPORT UpdatePayload
 
 export async function createMapPoint(
   db: D1Database,
@@ -59,4 +59,51 @@ export async function getMapPointById(db: D1Database, pointId: string): Promise<
     console.error(`D1 Database Error in getMapPointById for ID ${pointId}:`, error);
     throw new Error('Failed to fetch map point from the database.');
   }
+}
+
+// 2. ADD THIS ENTIRE NEW FUNCTION
+/**
+ * Updates a map point in the database.
+ * @param db The D1Database instance.
+ * @param pointId The ID of the point to update.
+ * @param payload The data to update (status and/or adminNotes).
+ * @returns A promise that resolves to a success indicator.
+ */
+export async function updateMapPoint(
+	db: D1Database,
+	pointId: string,
+	payload: UpdatePayload
+): Promise<{ success: boolean; message?: string }> {
+	const fields = [];
+	const values = [];
+	let paramIndex = 1;
+
+	if (payload.status) {
+		fields.push(`status = ?${paramIndex}`);
+		values.push(payload.status);
+		paramIndex++;
+	}
+
+	if (payload.adminNotes !== undefined) {
+		fields.push(`adminNotes = ?${paramIndex}`);
+		values.push(payload.adminNotes);
+		paramIndex++;
+	}
+
+	if (fields.length === 0) {
+		return { success: false, message: 'No fields to update.' };
+	}
+
+	values.push(pointId); // For the WHERE clause
+
+	const sql = `UPDATE map_points SET ${fields.join(', ')} WHERE pointId = ?${paramIndex}`;
+
+	try {
+		const stmt = db.prepare(sql);
+		await stmt.bind(...values).run();
+		return { success: true };
+	} catch (error) {
+		console.error(`D1 Database Error in updateMapPoint for ID ${pointId}:`, error);
+		throw new Error('Failed to update map point in the database.');
+	}
 }

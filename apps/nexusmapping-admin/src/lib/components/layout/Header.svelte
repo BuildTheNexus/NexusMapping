@@ -1,9 +1,10 @@
+<!-- File: apps/nexusmapping-admin/src/lib/components/layout/Header.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
 	import Menu from 'lucide-svelte/icons/menu';
 	import LogOut from 'lucide-svelte/icons/log-out';
 	import { Button } from '$lib/components/ui/button';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte'; // Import the new component
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
 	const { session } = $page.data;
 </script>
@@ -30,14 +31,21 @@
 		<span>NexusMapping</span>
 	</a>
 
+	<!-- ▼▼▼ ADD THIS NAVIGATION BLOCK ▼▼▼ -->
+	<nav class="hidden md:flex md:gap-2">
+		<Button variant="link" href="/dashboard/map" class="text-muted-foreground hover:text-foreground"
+			>Map</Button
+		>
+		<Button variant="link" href="/dashboard/data" class="text-muted-foreground hover:text-foreground"
+			>Data</Button
+		>
+	</nav>
+	<!-- ▲▲▲ END OF ADDITION ▲▲▲ -->
+
 	{#if session?.user}
 		<div class="ml-auto flex items-center gap-2">
-			<!-- Gap is reduced from gap-4 to gap-2 for a tighter fit -->
 			<span class="hidden text-sm text-muted-foreground sm:inline-block">{session.user.email}</span>
-
-			<!-- ADD THE THEME TOGGLE COMPONENT HERE -->
 			<ThemeToggle />
-
 			<form action="/auth/signout" method="POST">
 				<Button
 					type="submit"
@@ -49,7 +57,6 @@
 					<LogOut class="h-5 w-5" />
 				</Button>
 			</form>
-
 			<button class="rounded-full border w-8 h-8 flex items-center justify-center md:hidden">
 				<Menu class="h-5 w-5" />
 				<span class="sr-only">Toggle navigation menu</span>

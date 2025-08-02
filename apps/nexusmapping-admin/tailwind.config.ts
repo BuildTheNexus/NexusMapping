@@ -1,9 +1,10 @@
+// File: apps/nexusmapping-admin/tailwind.config.ts
 import type { Config } from 'tailwindcss';
 import animate from 'tailwindcss-animate';
 
 export default {
-    darkMode: 'class', // Correct v4 syntax
-    content: ['./src/**/*.{html,js,svelte,ts}'], // Content is still needed for v4 with Vite
+    darkMode: 'class',
+    content: ['./src/**/*.{html,js,svelte,ts}'],
     theme: {
         container: {
             center: true,
@@ -58,5 +59,6 @@ export default {
             }
         }
     },
+
     plugins: [animate]
 } satisfies Config;
