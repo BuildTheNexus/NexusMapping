@@ -1,8 +1,9 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import Google from 'lucide-svelte/icons/log-in'; // Using your corrected icon import
+	import Google from 'lucide-svelte/icons/log-in';
+	import Header from '$lib/components/layout/Header.svelte';
 
-	// --- Map-related imports (only used when logged in) ---
+	// Map-related imports
 	import maplibregl from 'maplibre-gl';
 	import type { FeatureCollection } from 'geojson';
 	import { MapLibre, GeoJSONSource, CircleLayer, NavigationControl } from 'svelte-maplibre-gl';
@@ -10,7 +11,6 @@
 
 	export let data: PageData;
 
-	// This reactive block will only run when data.points is available
 	$: geojsonData = {
 		type: 'FeatureCollection',
 		features:
@@ -32,48 +32,43 @@
 </script>
 
 {#if data.session}
-	<!-- ====================================================== -->
 	<!-- STATE 1: USER IS LOGGED IN -->
-	<!-- Render the entire map dashboard here. -->
-	<!-- ====================================================== -->
-	<div class="relative h-full w-full">
-		{#if data.error}
-			<div class="flex h-full w-full flex-col items-center justify-center bg-red-50 p-8">
-				<h1 class="text-2xl font-bold text-red-700">Failed to Load Map Data</h1>
-				<p class="mt-2 text-red-600">{data.error}</p>
-				<p class="mt-4 text-sm text-gray-500">
-					Please ensure the API worker is running (`pnpm --filter nexusmapping-worker dev`) and try
-					again.
-				</p>
-			</div>
-		{:else}
-			<MapLibre
-				style="https://demotiles.maplibre.org/style.json"
-				center={initialCenter}
-				zoom={10}
-				class="h-full w-full"
-			>
-				<NavigationControl />
-				<GeoJSONSource id="map-points-source" data={geojsonData}>
-					<CircleLayer
-						id="map-points-layer"
-						paint={{
-							'circle-color': '#ff0000',
-							'circle-radius': 6,
-							'circle-stroke-width': 2,
-							'circle-stroke-color': '#ffffff'
-						}}
-					/>
-				</GeoJSONSource>
-			</MapLibre>
-		{/if}
+	<!-- This container ensures the dashboard has a consistent background and fills the screen. -->
+	<div class="flex min-h-screen w-full flex-col bg-background">
+		<Header />
+		<main class="flex-grow">
+			{#if data.error}
+				<div class="flex h-full w-full flex-col items-center justify-center bg-red-50 p-8">
+					<h1 class="text-2xl font-bold text-red-700">Failed to Load Map Data</h1>
+					<p class="mt-2 text-red-600">{data.error}</p>
+				</div>
+			{:else}
+				<MapLibre
+					style="https://demotiles.maplibre.org/style.json"
+					center={initialCenter}
+					zoom={10}
+					class="h-full w-full"
+				>
+					<NavigationControl />
+					<GeoJSONSource id="map-points-source" data={geojsonData}>
+						<CircleLayer
+							id="map-points-layer"
+							paint={{
+								'circle-color': '#ff0000',
+								'circle-radius': 6,
+								'circle-stroke-width': 2,
+								'circle-stroke-color': '#ffffff'
+							}}
+						/>
+					</GeoJSONSource>
+				</MapLibre>
+			{/if}
+		</main>
 	</div>
 {:else}
-	<!-- ====================================================== -->
 	<!-- STATE 2: USER IS NOT LOGGED IN -->
-	<!-- Render the login page content here. -->
-	<!-- ====================================================== -->
-	<div class="flex min-h-screen w-full items-center justify-center bg-muted/40">
+	<!-- This container correctly centers the login card on a muted background. -->
+	<div class="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">
 		<div
 			class="w-full max-w-sm rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm"
 		>
@@ -81,7 +76,6 @@
 				<h1 class="text-2xl font-semibold tracking-tight">NexusMapping Admin</h1>
 				<p class="text-sm text-muted-foreground">Sign in to continue</p>
 			</div>
-
 			<form action="/auth/signin/google" method="POST" class="mt-6">
 				<button
 					type="submit"
