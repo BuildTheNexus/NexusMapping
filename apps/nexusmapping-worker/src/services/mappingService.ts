@@ -1,74 +1,63 @@
 // File: apps/nexusmapping-worker/src/services/mappingService.ts
-import type { MapPoint, UpdatePayload } from '../types'; // <-- 1. IMPORT UpdatePayload
+import type { MapPoint, UpdatePayload } from '../types';
 
 export async function createMapPoint(
-  db: D1Database,
-  pointData: Omit<MapPoint, 'pointId' | 'timestamp' | 'status'>
+	db: D1Database,
+	pointData: Omit<MapPoint, 'pointId' | 'timestamp' | 'status'>
 ): Promise<MapPoint> {
-  const newPoint: MapPoint = {
-    ...pointData,
-    pointId: `NEX-PT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, // New prefix
-    timestamp: new Date().toISOString(),
-    status: 'new',
-  };
+	const newPoint: MapPoint = {
+		...pointData,
+		pointId: `NEX-PT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+		timestamp: new Date().toISOString(),
+		status: 'new'
+	};
 
-  const stmt = db.prepare(
-    // Updated table name to map_points and column pointId
-    `INSERT INTO map_points (pointId, userId, timestamp, status, description, latitude, longitude, accuracy, address, photoId, adminNotes) 
+	const stmt = db.prepare(
+		`INSERT INTO map_points (pointId, userId, timestamp, status, description, latitude, longitude, accuracy, address, photoId, adminNotes)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
-  );
+	);
 
-  await stmt.bind(
-    newPoint.pointId, newPoint.userId, newPoint.timestamp, newPoint.status,
-    newPoint.description, newPoint.latitude, newPoint.longitude,
-    newPoint.accuracy, newPoint.address ?? null, newPoint.photoId,
-    newPoint.adminNotes ?? null
-  ).run();
+	await stmt
+		.bind(
+			newPoint.pointId,
+			newPoint.userId,
+			newPoint.timestamp,
+			newPoint.status,
+			newPoint.description,
+			newPoint.latitude,
+			newPoint.longitude,
+			newPoint.accuracy,
+			newPoint.address ?? null,
+			newPoint.photoId,
+			newPoint.adminNotes ?? null
+		)
+		.run();
 
-  return newPoint;
+	return newPoint;
 }
 
-/**
- * Retrieves all map points from the database.
- * @param db The D1Database instance.
- * @returns A promise that resolves to an array of MapPoint objects.
- */
 export async function getAllMapPoints(db: D1Database): Promise<MapPoint[]> {
-  try {
-    const stmt = db.prepare('SELECT * FROM map_points ORDER BY timestamp DESC');
-    const { results } = await stmt.all<MapPoint>();
-    return results;
-  } catch (error) {
-    console.error('D1 Database Error in getAllMapPoints:', error);
-    throw new Error('Failed to fetch map points from the database.');
-  }
+	try {
+		const stmt = db.prepare('SELECT * FROM map_points ORDER BY timestamp DESC');
+		const { results } = await stmt.all<MapPoint>();
+		return results;
+	} catch (error) {
+		console.error('D1 Database Error in getAllMapPoints:', error);
+		throw new Error('Failed to fetch map points from the database.');
+	}
 }
 
-/**
- * Retrieves a single map point by its ID.
- * @param db The D1Database instance.
- * @param pointId The ID of the point to retrieve.
- * @returns A promise that resolves to a MapPoint object, or null if not found.
- */
 export async function getMapPointById(db: D1Database, pointId: string): Promise<MapPoint | null> {
-  try {
-    const stmt = db.prepare('SELECT * FROM map_points WHERE pointId = ?1');
-    const result = await stmt.bind(pointId).first<MapPoint>();
-    return result;
-  } catch (error) {
-    console.error(`D1 Database Error in getMapPointById for ID ${pointId}:`, error);
-    throw new Error('Failed to fetch map point from the database.');
-  }
+	try {
+		const stmt = db.prepare('SELECT * FROM map_points WHERE pointId = ?1');
+		const result = await stmt.bind(pointId).first<MapPoint>();
+		return result;
+	} catch (error) {
+		console.error(`D1 Database Error in getMapPointById for ID ${pointId}:`, error);
+		throw new Error('Failed to fetch map point from the database.');
+	}
 }
 
-// 2. ADD THIS ENTIRE NEW FUNCTION
-/**
- * Updates a map point in the database.
- * @param db The D1Database instance.
- * @param pointId The ID of the point to update.
- * @param payload The data to update (status and/or adminNotes).
- * @returns A promise that resolves to a success indicator.
- */
 export async function updateMapPoint(
 	db: D1Database,
 	pointId: string,
@@ -105,5 +94,74 @@ export async function updateMapPoint(
 	} catch (error) {
 		console.error(`D1 Database Error in updateMapPoint for ID ${pointId}:`, error);
 		throw new Error('Failed to update map point in the database.');
+	}
+}
+
+// --- KAI: THIS FUNCTION HAS BEEN CORRECTED ---
+export async function seedDatabase(db: D1Database): Promise<{ count: number }> {
+	const seedLocations = [
+		{ name: 'Tenau Harbour Vicinity, Kupang', lat: -10.2, lon: 123.55 },
+		{ name: 'Soe City Center', lat: -9.86, lon: 124.28 },
+		{ name: 'Kefamenanu Town Square', lat: -9.44, lon: 124.47 },
+		{ name: 'Atambua Main Market Area', lat: -9.1, lon: 124.89 }
+	];
+
+	const statuses: MapPoint['status'][] = ['new', 'in_progress', 'completed', 'rejected'];
+	const pointsToInsert: MapPoint[] = [];
+
+	for (const location of seedLocations) {
+		for (let i = 0; i < 15; i++) {
+			const latJitter = (Math.random() - 0.5) * 0.05;
+			const lonJitter = (Math.random() - 0.5) * 0.05;
+
+			const point: MapPoint = {
+				pointId: `NEX-PT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+				userId: `user-seed-${crypto.randomUUID().slice(0, 4)}`,
+				timestamp: new Date().toISOString(),
+				status: statuses[Math.floor(Math.random() * statuses.length)],
+				description: `Generated issue near ${location.name} #${i + 1}`,
+				latitude: location.lat + latJitter,
+				longitude: location.lon + lonJitter,
+				accuracy: 5 + Math.random() * 10,
+				address: 'Generated Address', // Address is optional, but schema requires it
+				photoId: `seed-photo-${crypto.randomUUID().slice(0, 8)}`,
+				adminNotes: Math.random() > 0.7 ? 'Admin note added for this seed.' : undefined
+			};
+			pointsToInsert.push(point);
+		}
+	}
+
+	try {
+		await db.prepare('DELETE FROM map_points').run();
+
+		// CORRECTED: The SQL statement now includes the `address` column.
+		const stmt = db.prepare(
+			`INSERT INTO map_points (pointId, userId, timestamp, status, description, latitude, longitude, accuracy, address, photoId, adminNotes)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
+		);
+
+		// CORRECTED: The `bind` call now provides the `address` field.
+		const batch = pointsToInsert.map((p) =>
+			stmt.bind(
+				p.pointId,
+				p.userId,
+				p.timestamp,
+				p.status,
+				p.description,
+				p.latitude,
+				p.longitude,
+				p.accuracy,
+				p.address ?? null, // Provide address, defaulting to null
+				p.photoId,
+				p.adminNotes ?? null
+			)
+		);
+
+		await db.batch(batch);
+
+		return { count: pointsToInsert.length };
+	} catch (error) {
+		console.error('D1 Database Error in seedDatabase:', error);
+		throw new Error('Failed to seed the database.');
 	}
 }

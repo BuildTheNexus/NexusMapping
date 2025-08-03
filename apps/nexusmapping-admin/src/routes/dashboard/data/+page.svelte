@@ -10,24 +10,24 @@
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
+	import { navigating } from '$app/stores';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let isModalOpen = $state(false);
+	let isUpdateModalOpen = $state(false);
+	// --- KAI: ADDED STATE FOR THE NEW SEED DIALOG ---
+	let isSeedModalOpen = $state(false);
+
 	let selectedPoint = $state<MapPoint | null>(null);
 	let selectedStatus = $state<MapPoint['status'] | undefined>(undefined);
+	let seeding = $state(false);
 
-	// This is the robust solution: we define the exact Tailwind classes we want to apply,
-	// giving us full control without modifying the component's source code.
-	const statusDisplayMap: Record<
-		MapPoint['status'],
-		{ label: string; className: string }
-	> = {
+	const statusDisplayMap: Record<MapPoint['status'], { label: string; className: string }> = {
 		new: {
 			label: 'New',
 			className: 'bg-blue-500/20 text-blue-400 border-transparent hover:bg-blue-500/30'
 		},
-in_progress: {
+		in_progress: {
 			label: 'In Progress',
 			className: 'bg-yellow-500/20 text-yellow-400 border-transparent hover:bg-yellow-500/30'
 		},
@@ -41,86 +41,127 @@ in_progress: {
 		}
 	};
 
-	// Use `$derived` to ensure the `points` variable is always in sync with the `data` prop
-	// after `invalidateAll()` is called.
+	const statusOptions: { value: MapPoint['status']; label: string }[] = [
+		{ value: 'new', label: 'New' },
+		{ value: 'in_progress', label: 'In Progress' },
+		{ value: 'completed', label: 'Completed' },
+		{ value: 'rejected', label: 'Rejected' }
+	];
+
 	const points = $derived(data.points as MapPoint[]);
 
 	function openUpdateModal(point: MapPoint) {
 		selectedPoint = point;
 		selectedStatus = point.status;
-		isModalOpen = true;
+		isUpdateModalOpen = true;
 	}
 </script>
 
 <!-- MODAL DIALOG FOR UPDATING STATUS -->
-<Dialog.Root bind:open={isModalOpen}>
-	<Dialog.Portal>
-		<Dialog.Content>
-			<Dialog.Header>
-				<Dialog.Title>Update Status</Dialog.Title>
-				<Dialog.Description>
-					Updating status for point: <strong>{selectedPoint?.pointId}</strong>
-				</Dialog.Description>
-			</Dialog.Header>
+<Dialog.Root bind:open={isUpdateModalOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Update Status</Dialog.Title>
+			<Dialog.Description>
+				Updating status for point: <strong>{selectedPoint?.pointId}</strong>
+			</Dialog.Description>
+		</Dialog.Header>
+		<form
+			method="POST"
+			action="?/updateStatus"
+			class="mt-4 space-y-4"
+			use:enhance={() => {
+				return async ({ result }) => {
+					if (result.type === 'success') {
+						isUpdateModalOpen = false;
+						await invalidateAll();
+					}
+				};
+			}}
+		>
+			<input type="hidden" name="pointId" value={selectedPoint?.pointId} />
+			<input type="hidden" name="status" value={selectedStatus} />
+			<div>
+				<label for="status" class="text-sm font-medium">New Status</label>
+				<Select.Root type="single" bind:value={selectedStatus}>
+					<Select.Trigger class="w-full mt-1">
+						{selectedStatus ? statusDisplayMap[selectedStatus].label : 'Select a status'}
+					</Select.Trigger>
+					<Select.Content>
+						{#each statusOptions as option (option.value)}
+							<Select.Item value={option.value}>{option.label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+			<Dialog.Footer>
+				<Button type="submit" disabled={!selectedStatus}>Save Changes</Button>
+			</Dialog.Footer>
+		</form>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- --- KAI: ADDED THIS ENTIRE NEW DIALOG FOR SEEDING --- -->
+<Dialog.Root bind:open={isSeedModalOpen}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>Confirm Database Seed</Dialog.Title>
+			<Dialog.Description>
+				This will delete all existing map points and replace them with a new set of 60
+				island-wide demo points. This action cannot be undone.
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="mt-4">
+			<Button variant="outline" onclick={() => (isSeedModalOpen = false)}>Cancel</Button>
 			<form
 				method="POST"
-				action="?/updateStatus"
-				class="mt-4 space-y-4"
+				action="?/seed"
 				use:enhance={() => {
+					seeding = true;
 					return async ({ result }) => {
-						if (result.type === 'success') {
-							isModalOpen = false;
+						if (result.type === 'success' || result.type === 'failure') {
 							await invalidateAll();
 						}
+						isSeedModalOpen = false;
+						seeding = false;
 					};
 				}}
 			>
-				<input type="hidden" name="pointId" value={selectedPoint?.pointId} />
-				<input type="hidden" name="status" value={selectedStatus} />
-
-				<div>
-					<label for="status" class="text-sm font-medium">New Status</label>
-					<Select.Root type="single" bind:value={selectedStatus}>
-						<Select.Trigger class="w-full mt-1">
-							{selectedStatus ? statusDisplayMap[selectedStatus].label : 'Select a status'}
-						</Select.Trigger>
-						<Select.Content>
-							{#each Object.entries(statusDisplayMap) as [key, { label }]}
-								<Select.Item value={key}>{label}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</div>
-
-				<Dialog.Footer>
-					<Button type="submit" disabled={!selectedStatus}>Save Changes</Button>
-				</Dialog.Footer>
+				<Button type="submit" disabled={seeding}>Confirm Seed</Button>
 			</form>
-		</Dialog.Content>
-	</Dialog.Portal>
+		</Dialog.Footer>
+	</Dialog.Content>
 </Dialog.Root>
 
 <!-- MAIN PAGE CONTENT -->
 <div class="h-full w-full p-4 lg:p-6">
-	<h1 class="mb-4 text-2xl font-bold">Data Management</h1>
+	<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+		<h1 class="text-2xl font-bold">Data Management</h1>
+		<!-- --- KAI: REPLACED THE FORM WITH A SIMPLE BUTTON --- -->
+		<Button variant="outline" onclick={() => (isSeedModalOpen = true)} disabled={!!$navigating}>
+			Seed Island-Wide Data
+		</Button>
+	</div>
 
 	{#if form?.message}
 		<div
 			class="mb-4 rounded-lg p-3 text-sm {form.success
 				? 'border-green-500/50 bg-green-500/10 text-green-300'
 				: 'border-destructive/50 bg-destructive/10 text-red-400'}"
+			role="alert"
 		>
+			<span class="font-bold">{form.success ? 'Success:' : 'Error:'}</span>
 			{form.message}
 		</div>
 	{/if}
 
 	{#if data.error}
-		<div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-red-500">
+		<div class="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-red-500" role="alert">
 			<h3 class="font-bold">Failed to Load Data</h3>
 			<p>{data.error}</p>
 		</div>
 	{:else if points && points.length > 0}
-		<!-- DESKTOP VIEW -->
+		<!-- Desktop and Mobile Views -->
 		<div class="hidden rounded-md border lg:block">
 			<Table.Root>
 				<Table.Header>
@@ -150,8 +191,6 @@ in_progress: {
 				</Table.Body>
 			</Table.Root>
 		</div>
-
-		<!-- MOBILE VIEW -->
 		<div class="space-y-4 lg:hidden">
 			{#each points as point (point.pointId)}
 				{@const status = statusDisplayMap[point.status]}

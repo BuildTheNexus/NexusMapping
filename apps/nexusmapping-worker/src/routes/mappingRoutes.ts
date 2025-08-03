@@ -1,14 +1,15 @@
 // File: apps/nexusmapping-worker/src/routes/mappingRoutes.ts
 
 import { Hono } from 'hono';
-import type { Env, Variables, MapPoint, UpdatePayload } from '../types'; // <-- 1. IMPORT UpdatePayload
+import type { Env, Variables, MapPoint, UpdatePayload } from '../types';
 import {
 	createMapPoint,
 	getAllMapPoints,
 	getMapPointById,
-	updateMapPoint, // <-- 2. IMPORT updateMapPoint
+	updateMapPoint,
+	seedDatabase // <-- 1. IMPORT seedDatabase
 } from '../services/mappingService';
-import { authMiddleware } from '../middleware/auth'; // <-- 3. IMPORT authMiddleware
+import { authMiddleware } from '../middleware/auth';
 
 export const mappingRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -26,7 +27,6 @@ mappingRoutes.post('/api/map-points', async (c) => {
 	}
 });
 
-// 4. ADD THIS ENTIRE NEW ROUTE
 // --- UPDATE ---
 mappingRoutes.patch('/api/map-points/:pointId', authMiddleware, async (c) => {
 	try {
@@ -55,6 +55,19 @@ mappingRoutes.patch('/api/map-points/:pointId', authMiddleware, async (c) => {
 		return c.json({ success: false, message: 'An internal server error occurred.' }, 500);
 	}
 });
+
+// --- KAI: ADD THIS ENTIRE NEW ROUTE ---
+// --- SEED ---
+mappingRoutes.post('/api/seed', authMiddleware, async (c) => {
+	try {
+		const result = await seedDatabase(c.env.DB);
+		return c.json({ success: true, message: `Database seeded successfully with ${result.count} points.` });
+	} catch (error: any) {
+		console.error('Error in POST /api/seed:', error);
+		return c.json({ success: false, message: 'Failed to seed database.' }, 500);
+	}
+});
+// --- END OF ADDITION ---
 
 // --- READ (ALL) ---
 mappingRoutes.get('/api/map-points', async (c) => {
