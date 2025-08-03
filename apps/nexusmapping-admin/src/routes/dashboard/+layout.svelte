@@ -9,9 +9,7 @@
 	<Header {data} />
 
 	<main class="relative overflow-y-auto">
-		<div class="p-4 sm:p-6">
-			{@render children()}
-		</div>
+		{@render children()}
 		<footer class="flex items-center justify-center p-4 sm:p-6">
 			<Footer />
 		</footer>

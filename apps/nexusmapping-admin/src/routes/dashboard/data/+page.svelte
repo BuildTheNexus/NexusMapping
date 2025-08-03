@@ -13,6 +13,7 @@
 	import { page } from '$app/stores';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import { Input } from '$lib/components/ui/input';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -21,6 +22,7 @@
 	let selectedPoint = $state<MapPoint | null>(null);
 	let selectedStatus = $state<MapPoint['status'] | undefined>(undefined);
 	let seeding = $state(false);
+	let statusFilter = $state(data.statusFilter || '');
 
 	const statusDisplayMap: Record<string, { label: string; className: string }> = {
 		new: {
@@ -188,7 +190,7 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<div ontouchstart={handleTouchStart} ontouchend={handleTouchEnd}>
+<div class="p-4 lg:p-6" ontouchstart={handleTouchStart} ontouchend={handleTouchEnd}>
 	<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
 		<h1 class="text-2xl font-bold">Data Management</h1>
 		<Button
@@ -200,6 +202,27 @@
 			Seed Island-Wide Data
 		</Button>
 	</div>
+
+	<form method="GET" class="mb-4 flex flex-col sm:flex-row gap-2">
+		<Input
+			name="q"
+			placeholder="Search ID or description..."
+			class="w-full sm:w-64"
+			value={data.searchQuery}
+		/>
+		<Select.Root name="status" type="single" bind:value={statusFilter}>
+			<Select.Trigger class="w-full sm:w-48">
+				{statusFilter ? statusDisplayMap[statusFilter]?.label : 'All Statuses'}
+			</Select.Trigger>
+			<Select.Content>
+				<Select.Item value="">All Statuses</Select.Item>
+				{#each statusOptions as option (option.value)}
+					<Select.Item value={option.value}>{option.label}</Select.Item>
+				{/each}
+			</Select.Content>
+		</Select.Root>
+		<Button type="submit">Filter</Button>
+	</form>
 
 	{#if form?.message}
 		<div
@@ -287,6 +310,6 @@
 			</div>
 		</div>
 	{:else}
-		<p class="mt-8 text-center text-muted-foreground">No map points found.</p>
+		<p class="mt-8 text-center text-muted-foreground">No map points found for the selected filters.</p>
 	{/if}
 </div>

@@ -22,11 +22,27 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
 			return { points: [], error: data.message || 'API error occurred.' };
 		}
 
+		const searchQuery = url.searchParams.get('q') || '';
+		const statusFilter = url.searchParams.get('status') || '';
+
+		const filteredPoints = data.points.filter((point) => {
+			const searchMatch =
+				searchQuery.length === 0 ||
+				point.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				point.pointId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				point.address?.toLowerCase().includes(searchQuery.toLowerCase());
+
+			const statusMatch =
+				statusFilter.length === 0 || point.status.toLowerCase() === statusFilter.toLowerCase();
+
+			return searchMatch && statusMatch;
+		});
+
 		const page = parseInt(url.searchParams.get('page') ?? '1', 10);
 		const pageSize = 10;
-		const totalItems = data.points.length;
+		const totalItems = filteredPoints.length;
 		const totalPages = Math.ceil(totalItems / pageSize);
-		const paginatedPoints = data.points.slice((page - 1) * pageSize, page * pageSize);
+		const paginatedPoints = filteredPoints.slice((page - 1) * pageSize, page * pageSize);
 
 		return {
 			points: paginatedPoints,
@@ -34,7 +50,9 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
 				currentPage: page,
 				totalPages,
 				totalItems
-			}
+			},
+			searchQuery,
+			statusFilter
 		};
 	} catch (error) {
 		return {
