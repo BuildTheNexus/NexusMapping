@@ -47,6 +47,9 @@ export default {
                 card: {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))'
+                },
+                showcase: {
+                    DEFAULT: 'hsl(var(--showcase-background))'
                 }
             },
             borderRadius: {

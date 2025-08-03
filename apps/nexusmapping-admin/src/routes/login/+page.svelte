@@ -1,24 +1,64 @@
-<!-- File: apps/nexusmapping-admin/src/routes/login/+page.svelte -->
 <script lang="ts">
-	import Google from "@lucide/svelte/icons/log-in";
+	import Google from '@lucide/svelte/icons/log-in';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 </script>
 
-<!-- KAI: Use the same background as the main app for consistency -->
-<div class="flex min-h-screen w-full items-center justify-center bg-background p-4">
-	<Card.Root class="w-full max-w-sm">
-		<Card.Header class="space-y-2 text-center">
-			<Card.Title class="text-2xl">NexusMapping Admin</Card.Title>
-			<Card.Description>Sign in to continue</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			<form action="/auth/signin/google" method="POST" class="mt-2">
-				<Button type="submit" class="w-full" variant="outline">
-					<Google class="mr-2 h-4 w-4" />
-					Sign In with Google
-				</Button>
-			</form>
-		</Card.Content>
-	</Card.Root>
+<div class="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
+	<!-- Login Panel -->
+	<div class="flex items-center justify-center p-8 lg:py-16">
+		<Card.Root class="w-full max-w-sm">
+			<Card.Header class="space-y-2 text-center">
+				<Card.Title class="text-2xl">Admin Login</Card.Title>
+				<Card.Description>
+					Mapping Insights, Driving Decisions.
+					<br class="hidden sm:block" />
+					
+				</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<form action="/auth/signin/google" method="POST" class="mt-2">
+					<Button type="submit" class="w-full" variant="outline">
+						<Google class="mr-2 h-4 w-4" />
+						Sign In with Google
+					</Button>
+				</form>
+			</Card.Content>
+		</Card.Root>
+	</div>
+
+	<!-- Showcase Panel -->
+	<div class="flex flex-col items-center justify-center gap-8 bg-showcase p-12">
+		<a href="/" class="flex items-center gap-3 font-semibold text-foreground">
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				class="h-7 w-7"
+			>
+				<path d="M12 2L2 7l10 5 10-5-10-5z" />
+				<path d="M2 17l10 5 10-5" />
+				<path d="M2 12l10 5 10-5" />
+			</svg>
+			<span class="text-xl">Nexus Mapping</span>
+		</a>
+		<div
+			class="relative w-64 overflow-hidden rounded-2xl shadow-2xl aspect-[9/16] border"
+		>
+			<video
+				class="absolute inset-0 h-full w-full object-contain"
+				src="/showcase-nexus-mapping.webm"
+				autoplay
+				loop
+				muted
+				playsinline
+			>
+				Your browser does not support the video tag.
+			</video>
+		</div>
+	</div>
 </div>

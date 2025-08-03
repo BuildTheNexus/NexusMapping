@@ -31,7 +31,7 @@
 			<path d="M2 17l10 5 10-5" />
 			<path d="M2 12l10 5 10-5" />
 		</svg>
-		<span class="hidden md:inline-block">NexusMapping</span>
+		<span class="hidden md:inline-block">Nexus Mapping</span>
 	</a>
 
 	<nav class="hidden md:flex md:gap-2">
@@ -97,7 +97,7 @@
 									<path d="M2 17l10 5 10-5" />
 									<path d="M2 12l10 5 10-5" />
 								</svg>
-								<span>NexusMapping</span>
+								<span>Nexus Mapping</span>
 							</a>
 						</div>
 						<Separator class="my-2" />
