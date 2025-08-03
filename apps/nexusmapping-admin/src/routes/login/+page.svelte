@@ -2,6 +2,18 @@
 	import Google from '@lucide/svelte/icons/log-in';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import { onMount } from 'svelte';
+
+	let videoEl: HTMLVideoElement;
+
+	onMount(() => {
+		if (videoEl) {
+			const source = videoEl.getAttribute('data-src');
+			if (source) {
+				videoEl.src = source;
+			}
+		}
+	});
 </script>
 
 <div class="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
@@ -13,7 +25,7 @@
 				<Card.Description>
 					Mapping Insights, Driving Decisions.
 					<br class="hidden sm:block" />
-					
+					Sign in to continue.
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -46,16 +58,16 @@
 			</svg>
 			<span class="text-xl">Nexus Mapping</span>
 		</a>
-		<div
-			class="relative w-64 overflow-hidden rounded-2xl shadow-2xl aspect-[9/16] border"
-		>
+		<div class="relative w-64 overflow-hidden rounded-2xl shadow-2xl aspect-[9/16] border">
 			<video
+				bind:this={videoEl}
+				data-src="/showcase-nexus-mapping.webm"
 				class="absolute inset-0 h-full w-full object-contain"
-				src="/showcase-nexus-mapping.webm"
 				autoplay
 				loop
 				muted
 				playsinline
+				preload="metadata"
 			>
 				Your browser does not support the video tag.
 			</video>
