@@ -1,22 +1,22 @@
-<!-- File: apps/nexusmapping-admin/src/lib/components/layout/Header.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import Menu from "@lucide/svelte/icons/menu";
-	import LogOut from "@lucide/svelte/icons/log-out";
+	import Menu from '@lucide/svelte/icons/menu';
+	import LogOut from '@lucide/svelte/icons/log-out';
 	import { Button } from '$lib/components/ui/button';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import { isMobileMenuOpen } from '$lib/stores/navigation';
 	import { Separator } from '$lib/components/ui/separator';
+	import Map from '@lucide/svelte/icons/map';
+	import Table from '@lucide/svelte/icons/table-2';
 
-	const { session } = $page.data;
+	let { data } = $props();
 </script>
 
 <header
 	class="flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6"
 >
 	<a href="/" class="flex items-center gap-2 font-semibold">
-		<!-- This SVG is correct -->
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 24 24"
@@ -36,14 +36,14 @@
 
 	<nav class="hidden md:flex md:gap-2">
 		<Button
-			variant={$page.url.pathname === '/dashboard/map' ? 'secondary' : 'link'}
+			variant={$page.url.pathname.startsWith('/dashboard/map') ? 'secondary' : 'link'}
 			href="/dashboard/map"
 			class="text-muted-foreground hover:text-foreground"
 		>
 			Map
 		</Button>
 		<Button
-			variant={$page.url.pathname === '/dashboard/data' ? 'secondary' : 'link'}
+			variant={$page.url.pathname.startsWith('/dashboard/data') ? 'secondary' : 'link'}
 			href="/dashboard/data"
 			class="text-muted-foreground hover:text-foreground"
 		>
@@ -51,9 +51,11 @@
 		</Button>
 	</nav>
 
-	{#if session?.user}
+	{#if data.session?.user}
 		<div class="ml-auto flex items-center gap-2">
-			<span class="hidden text-sm text-muted-foreground sm:inline-block">{session.user.email}</span>
+			<span class="hidden text-sm text-muted-foreground sm:inline-block"
+				>{data.session.user.email}</span
+			>
 			<ThemeToggle />
 			<form action="/auth/signout" method="POST">
 				<Button
@@ -78,11 +80,9 @@
 				</Button>
 
 				<Sheet.Root bind:open={$isMobileMenuOpen}>
-					<!-- KAI: 2. UX IMPROVEMENT - Change side from "right" to "left" -->
-					<Sheet.Content side="left">
-						<Sheet.Header>
-							<a href="/" class="flex items-center gap-2 font-semibold">
-								<!-- KAI: 1. BUG FIX - Correct the viewBox to have four numbers -->
+					<Sheet.Content side="left" class="p-4">
+						<div class="flex h-14 items-center justify-center">
+							<a href="/" class="flex items-center justify-center gap-2 font-semibold">
 								<svg
 									xmlns="http://www.w3.org/2000/svg"
 									viewBox="0 0 24 24"
@@ -99,18 +99,26 @@
 								</svg>
 								<span>NexusMapping</span>
 							</a>
-						</Sheet.Header>
-						<Separator class="my-4" />
-						<nav class="grid gap-4 text-lg font-medium">
+						</div>
+						<Separator class="my-2" />
+						<nav class="grid gap-2 text-lg font-medium">
 							<a
 								href="/dashboard/map"
-								class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-								on:click={() => ($isMobileMenuOpen = false)}>Map</a
+								class="flex items-center gap-4 rounded-lg px-4 py-2 text-muted-foreground transition-all hover:text-primary"
+								class:text-primary={$page.url.pathname.startsWith('/dashboard/map')}
+								onclick={() => ($isMobileMenuOpen = false)}
+							>
+								<Map class="h-5 w-5" />
+								Map</a
 							>
 							<a
 								href="/dashboard/data"
-								class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
-								on:click={() => ($isMobileMenuOpen = false)}>Data</a
+								class="flex items-center gap-4 rounded-lg px-4 py-2 text-muted-foreground transition-all hover:text-primary"
+								class:text-primary={$page.url.pathname.startsWith('/dashboard/data')}
+								onclick={() => ($isMobileMenuOpen = false)}
+							>
+								<Table class="h-5 w-5" />
+								Data</a
 							>
 						</nav>
 					</Sheet.Content>

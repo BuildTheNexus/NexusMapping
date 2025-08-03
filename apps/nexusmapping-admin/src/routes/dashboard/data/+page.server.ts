@@ -1,8 +1,7 @@
-// File: apps/nexusmapping-admin/src/routes/dashboard/data/+page.server.ts
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import type { MapPoint, UpdatePayload } from '../../../../../nexusmapping-worker/src/types';
-import { triggerSeed } from '$lib/server/seeding'; // <-- KAI: IMPORT THE NEW MODULE
+import { triggerSeed } from '$lib/server/seeding';
 
 const WORKER_API_URL = 'http://127.0.0.1:8788/api/map-points';
 
@@ -12,7 +11,7 @@ interface ApiResponse {
 	message?: string;
 }
 
-export const load: PageServerLoad = async ({ fetch }) => {
+export const load: PageServerLoad = async ({ fetch, url }) => {
 	try {
 		const response = await fetch(WORKER_API_URL);
 		if (!response.ok) {
@@ -22,14 +21,32 @@ export const load: PageServerLoad = async ({ fetch }) => {
 		if (!data.success || !data.points) {
 			return { points: [], error: data.message || 'API error occurred.' };
 		}
-		return { points: data.points };
+
+		const page = parseInt(url.searchParams.get('page') ?? '1', 10);
+		const pageSize = 10;
+		const totalItems = data.points.length;
+		const totalPages = Math.ceil(totalItems / pageSize);
+		const paginatedPoints = data.points.slice((page - 1) * pageSize, page * pageSize);
+
+		return {
+			points: paginatedPoints,
+			pagination: {
+				currentPage: page,
+				totalPages,
+				totalItems
+			}
+		};
 	} catch (error) {
-		return { points: [], error: 'Could not connect to the API worker. Is it running?' };
+		return {
+			points: [],
+			pagination: { currentPage: 1, totalPages: 1, totalItems: 0 },
+			error: 'Could not connect to the API worker. Is it running?'
+		};
 	}
 };
 
 export const actions: Actions = {
-	updateStatus: async ({ locals, request }) => {
+	updateStatus: async ({ locals, request, fetch }) => {
 		const session = await locals.auth();
 		if (!session?.user) {
 			return fail(401, { success: false, message: 'Unauthorized' });
@@ -63,8 +80,6 @@ export const actions: Actions = {
 			return fail(500, { success: false, message: 'A network error occurred.' });
 		}
 	},
-
-	// --- KAI: THIS ACTION IS NOW CLEAN AND REFACTORED ---
 	seed: async ({ locals }) => {
 		return await triggerSeed(locals);
 	}

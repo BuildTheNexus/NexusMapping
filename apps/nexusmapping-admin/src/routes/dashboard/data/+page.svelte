@@ -1,4 +1,3 @@
-<!-- File: apps/nexusmapping-admin/src/routes/dashboard/data/+page.svelte -->
 <script lang="ts">
 	import type { PageData, ActionData } from './$types';
 	import { Button } from '$lib/components/ui/button';
@@ -6,23 +5,24 @@
 	import * as Select from '$lib/components/ui/select';
 	import type { MapPoint } from '../../../../../nexusmapping-worker/src/types';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import * as Card from '$lib/components/ui/card';
 	import * as Table from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import { navigating } from '$app/stores';
+	import { page } from '$app/stores';
+	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let isUpdateModalOpen = $state(false);
-	// --- KAI: ADDED STATE FOR THE NEW SEED DIALOG ---
 	let isSeedModalOpen = $state(false);
-
 	let selectedPoint = $state<MapPoint | null>(null);
 	let selectedStatus = $state<MapPoint['status'] | undefined>(undefined);
 	let seeding = $state(false);
 
-	const statusDisplayMap: Record<MapPoint['status'], { label: string; className: string }> = {
+	const statusDisplayMap: Record<string, { label: string; className: string }> = {
 		new: {
 			label: 'New',
 			className: 'bg-blue-500/20 text-blue-400 border-transparent hover:bg-blue-500/30'
@@ -49,15 +49,71 @@
 	];
 
 	const points = $derived(data.points as MapPoint[]);
+	const { currentPage, totalPages, totalItems } = $derived(
+		data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 }
+	);
 
 	function openUpdateModal(point: MapPoint) {
 		selectedPoint = point;
 		selectedStatus = point.status;
 		isUpdateModalOpen = true;
 	}
+
+	function getPageUrl(pageNumber: number) {
+		const url = new URL($page.url);
+		url.searchParams.set('page', pageNumber.toString());
+		return url.pathname + url.search;
+	}
+
+	function goToNextPage() {
+		if (currentPage < totalPages) {
+			goto(getPageUrl(currentPage + 1));
+		}
+	}
+
+	function goToPreviousPage() {
+		if (currentPage > 1) {
+			goto(getPageUrl(currentPage - 1));
+		}
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'ArrowRight') {
+			goToNextPage();
+		} else if (event.key === 'ArrowLeft') {
+			goToPreviousPage();
+		}
+	}
+
+	let touchStartX = 0;
+	let touchStartY = 0;
+	const swipeThreshold = 50;
+
+	function handleTouchStart(e: TouchEvent) {
+		touchStartX = e.touches[0].clientX;
+		touchStartY = e.touches[0].clientY;
+	}
+
+	function handleTouchEnd(e: TouchEvent) {
+		const touchEndX = e.changedTouches[0].clientX;
+		const touchEndY = e.changedTouches[0].clientY;
+		const deltaX = touchEndX - touchStartX;
+		const deltaY = touchEndY - touchStartY;
+
+		if (Math.abs(deltaY) > Math.abs(deltaX)) {
+			return;
+		}
+
+		if (deltaX > swipeThreshold) {
+			goToPreviousPage();
+		} else if (deltaX < -swipeThreshold) {
+			goToNextPage();
+		}
+	}
 </script>
 
-<!-- MODAL DIALOG FOR UPDATING STATUS -->
+<svelte:window onkeydown={handleKeydown} />
+
 <Dialog.Root bind:open={isUpdateModalOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
@@ -85,7 +141,7 @@
 				<label for="status" class="text-sm font-medium">New Status</label>
 				<Select.Root type="single" bind:value={selectedStatus}>
 					<Select.Trigger class="w-full mt-1">
-						{selectedStatus ? statusDisplayMap[selectedStatus].label : 'Select a status'}
+						{selectedStatus ? statusDisplayMap[selectedStatus]?.label : 'Select a status'}
 					</Select.Trigger>
 					<Select.Content>
 						{#each statusOptions as option (option.value)}
@@ -101,7 +157,6 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- --- KAI: ADDED THIS ENTIRE NEW DIALOG FOR SEEDING --- -->
 <Dialog.Root bind:open={isSeedModalOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
@@ -133,12 +188,15 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- MAIN PAGE CONTENT -->
-<div class="h-full w-full p-4 lg:p-6">
+<div ontouchstart={handleTouchStart} ontouchend={handleTouchEnd}>
 	<div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
 		<h1 class="text-2xl font-bold">Data Management</h1>
-		<!-- --- KAI: REPLACED THE FORM WITH A SIMPLE BUTTON --- -->
-		<Button variant="outline" onclick={() => (isSeedModalOpen = true)} disabled={!!$navigating}>
+		<Button
+			variant="outline"
+			onclick={() => (isSeedModalOpen = true)}
+			disabled={!!$navigating}
+			class="mt-4 sm:mt-0"
+		>
 			Seed Island-Wide Data
 		</Button>
 	</div>
@@ -161,7 +219,6 @@
 			<p>{data.error}</p>
 		</div>
 	{:else if points && points.length > 0}
-		<!-- Desktop and Mobile Views -->
 		<div class="hidden rounded-md border lg:block">
 			<Table.Root>
 				<Table.Header>
@@ -210,6 +267,24 @@
 					</Card.Content>
 				</Card.Root>
 			{/each}
+		</div>
+		<div class="mt-6 flex items-center justify-between">
+			<div class="text-sm text-muted-foreground">
+				Page {currentPage} of {totalPages}.<br />
+				Total {totalItems} points.
+			</div>
+			<div class="flex items-center gap-2">
+				<a href={getPageUrl(currentPage - 1)} class:pointer-events-none={currentPage <= 1}>
+					<Button variant="outline" size="icon" disabled={currentPage <= 1}>
+						<ArrowLeft class="h-4 w-4" />
+					</Button>
+				</a>
+				<a href={getPageUrl(currentPage + 1)} class:pointer-events-none={currentPage >= totalPages}>
+					<Button variant="outline" size="icon" disabled={currentPage >= totalPages}>
+						<ArrowRight class="h-4 w-4" />
+					</Button>
+				</a>
+			</div>
 		</div>
 	{:else}
 		<p class="mt-8 text-center text-muted-foreground">No map points found.</p>
