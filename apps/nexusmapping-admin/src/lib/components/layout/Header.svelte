@@ -1,8 +1,8 @@
 <!-- File: apps/nexusmapping-admin/src/lib/components/layout/Header.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import Menu from 'lucide-svelte/icons/menu';
-	import LogOut from 'lucide-svelte/icons/log-out';
+	import Menu from "@lucide/svelte/icons/menu";
+	import LogOut from "@lucide/svelte/icons/log-out";
 	import { Button } from '$lib/components/ui/button';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 

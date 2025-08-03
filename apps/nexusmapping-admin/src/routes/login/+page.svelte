@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Google from 'lucide-svelte/icons/log-in';
+	import Google from "@lucide/svelte/icons/log-in";
 </script>
 
 <div class="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">

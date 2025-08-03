@@ -12,6 +12,7 @@
 
 	let isModalOpen = $state(false);
 	let selectedPoint = $state<MapPoint | null>(null);
+	let selectedStatus = $state<MapPoint['status'] | undefined>(undefined);
 
 	const statusDisplayMap: Record<MapPoint['status'], { label: string; class: string }> = {
 		new: { label: 'New', class: 'bg-blue-500' },
@@ -19,10 +20,14 @@
 		completed: { label: 'Completed', class: 'bg-green-500' },
 		rejected: { label: 'Rejected', class: 'bg-red-500' }
 	};
-	const points = data.points as MapPoint[];
+	
+	// --- KAI: THE DEFINITIVE FIX ---
+	// Change `const points = ...` to `const points = $derived(...)`
+	const points = $derived(data.points as MapPoint[]);
 
 	function openUpdateModal(point: MapPoint) {
 		selectedPoint = point;
+		selectedStatus = point.status;
 		isModalOpen = true;
 	}
 </script>
@@ -53,13 +58,18 @@
 			>
 				<input type="hidden" name="pointId" value={selectedPoint?.pointId} />
 
+				<!-- KAI: DEFINITIVE FIX - PART 1 -->
+				<!-- Add a hidden input to hold and submit the selected status value -->
+				<input type="hidden" name="status" value={selectedStatus} />
+
 				<div>
 					<label for="status" class="text-sm font-medium">New Status</label>
-					<!-- KAI: DEFINITIVE FIX -->
-					<Select.Root name="status" type="single" value={selectedPoint?.status}>
+
+					<!-- KAI: DEFINITIVE FIX - PART 2 -->
+					<!-- Remove the 'name' attribute from the component itself -->
+					<Select.Root type="single" bind:value={selectedStatus}>
 						<Select.Trigger class="w-full mt-1">
-							<!-- Display the human-readable label of the selected status -->
-							{selectedPoint ? statusDisplayMap[selectedPoint.status].label : 'Select a status'}
+							{selectedStatus ? statusDisplayMap[selectedStatus].label : 'Select a status'}
 						</Select.Trigger>
 						<Select.Content>
 							{#each Object.entries(statusDisplayMap) as [key, { label }]}
@@ -70,7 +80,7 @@
 				</div>
 
 				<Dialog.Footer>
-					<Button type="submit">Save Changes</Button>
+					<Button type="submit" disabled={!selectedStatus}>Save Changes</Button>
 				</Dialog.Footer>
 			</form>
 		</Dialog.Content>

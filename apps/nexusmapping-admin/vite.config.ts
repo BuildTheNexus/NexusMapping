@@ -1,8 +1,11 @@
+// File: apps/nexusmapping-admin/vite.config.ts
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-
-	plugins: [sveltekit()]
+	plugins: [
+        sveltekit(),
+        tailwindcss() 
+    ]
 });
