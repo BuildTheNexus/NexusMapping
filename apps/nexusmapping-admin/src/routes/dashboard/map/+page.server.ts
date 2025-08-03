@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import type { MapPoint } from '../../../../../nexusmapping-worker/src/types';
+import { MAPTILER_API_KEY } from '$env/static/private';
 
 const WORKER_API_URL = 'http://127.0.0.1:8788/api/map-points';
 
@@ -10,7 +11,6 @@ interface ApiResponse {
 }
 
 export const load: PageServerLoad = async () => {
-	// We don't need to check for a session here, the layout guard handles it.
 	try {
 		const response = await fetch(WORKER_API_URL);
 
@@ -27,7 +27,26 @@ export const load: PageServerLoad = async () => {
 			return { points: [], error: data.message || 'API error.' };
 		}
 
-		return { points: data.points };
+		// --- KAI: ADD THIS SUMMARY CALCULATION LOGIC ---
+		const summary: Record<string, number> = {
+			new: 0,
+			in_progress: 0,
+			completed: 0,
+			rejected: 0
+		};
+
+		for (const point of data.points) {
+			if (point.status in summary) {
+				summary[point.status]++;
+			}
+		}
+		// --- END OF ADDITION ---
+
+		return {
+			points: data.points,
+			maptilerKey: MAPTILER_API_KEY,
+			summary // <-- Pass the calculated summary to the page
+		};
 	} catch (error) {
 		return {
 			points: [],
