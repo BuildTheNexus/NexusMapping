@@ -7,6 +7,9 @@
 	import type { MapPoint } from '../../../../../nexusmapping-worker/src/types';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import * as Card from '$lib/components/ui/card';
+	import * as Table from '$lib/components/ui/table';
+	import { Badge } from '$lib/components/ui/badge';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -14,15 +17,32 @@
 	let selectedPoint = $state<MapPoint | null>(null);
 	let selectedStatus = $state<MapPoint['status'] | undefined>(undefined);
 
-	const statusDisplayMap: Record<MapPoint['status'], { label: string; class: string }> = {
-		new: { label: 'New', class: 'bg-blue-500' },
-		in_progress: { label: 'In Progress', class: 'bg-yellow-500' },
-		completed: { label: 'Completed', class: 'bg-green-500' },
-		rejected: { label: 'Rejected', class: 'bg-red-500' }
+	// This is the robust solution: we define the exact Tailwind classes we want to apply,
+	// giving us full control without modifying the component's source code.
+	const statusDisplayMap: Record<
+		MapPoint['status'],
+		{ label: string; className: string }
+	> = {
+		new: {
+			label: 'New',
+			className: 'bg-blue-500/20 text-blue-400 border-transparent hover:bg-blue-500/30'
+		},
+in_progress: {
+			label: 'In Progress',
+			className: 'bg-yellow-500/20 text-yellow-400 border-transparent hover:bg-yellow-500/30'
+		},
+		completed: {
+			label: 'Completed',
+			className: 'bg-green-500/20 text-green-400 border-transparent hover:bg-green-500/30'
+		},
+		rejected: {
+			label: 'Rejected',
+			className: 'bg-destructive text-destructive-foreground hover:bg-destructive/80 border-transparent'
+		}
 	};
-	
-	// --- KAI: THE DEFINITIVE FIX ---
-	// Change `const points = ...` to `const points = $derived(...)`
+
+	// Use `$derived` to ensure the `points` variable is always in sync with the `data` prop
+	// after `invalidateAll()` is called.
 	const points = $derived(data.points as MapPoint[]);
 
 	function openUpdateModal(point: MapPoint) {
@@ -42,7 +62,6 @@
 					Updating status for point: <strong>{selectedPoint?.pointId}</strong>
 				</Dialog.Description>
 			</Dialog.Header>
-
 			<form
 				method="POST"
 				action="?/updateStatus"
@@ -57,16 +76,10 @@
 				}}
 			>
 				<input type="hidden" name="pointId" value={selectedPoint?.pointId} />
-
-				<!-- KAI: DEFINITIVE FIX - PART 1 -->
-				<!-- Add a hidden input to hold and submit the selected status value -->
 				<input type="hidden" name="status" value={selectedStatus} />
 
 				<div>
 					<label for="status" class="text-sm font-medium">New Status</label>
-
-					<!-- KAI: DEFINITIVE FIX - PART 2 -->
-					<!-- Remove the 'name' attribute from the component itself -->
 					<Select.Root type="single" bind:value={selectedStatus}>
 						<Select.Trigger class="w-full mt-1">
 							{selectedStatus ? statusDisplayMap[selectedStatus].label : 'Select a status'}
@@ -91,7 +104,6 @@
 <div class="h-full w-full p-4 lg:p-6">
 	<h1 class="mb-4 text-2xl font-bold">Data Management</h1>
 
-	<!-- Display form submission feedback -->
 	{#if form?.message}
 		<div
 			class="mb-4 rounded-lg p-3 text-sm {form.success
@@ -108,28 +120,56 @@
 			<p>{data.error}</p>
 		</div>
 	{:else if points && points.length > 0}
-		<div class="space-y-4">
+		<!-- DESKTOP VIEW -->
+		<div class="hidden rounded-md border lg:block">
+			<Table.Root>
+				<Table.Header>
+					<Table.Row>
+						<Table.Head class="w-[200px]">Point ID</Table.Head>
+						<Table.Head>Description</Table.Head>
+						<Table.Head class="w-[150px]">Status</Table.Head>
+						<Table.Head class="w-[120px] text-right">Action</Table.Head>
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{#each points as point (point.pointId)}
+						{@const status = statusDisplayMap[point.status]}
+						<Table.Row>
+							<Table.Cell class="font-mono text-xs">{point.pointId}</Table.Cell>
+							<Table.Cell class="font-medium">{point.description}</Table.Cell>
+							<Table.Cell>
+								<Badge class="{status.className} capitalize">{status.label}</Badge>
+							</Table.Cell>
+							<Table.Cell class="text-right">
+								<Button variant="outline" size="sm" onclick={() => openUpdateModal(point)}>
+									Update
+								</Button>
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
+		</div>
+
+		<!-- MOBILE VIEW -->
+		<div class="space-y-4 lg:hidden">
 			{#each points as point (point.pointId)}
 				{@const status = statusDisplayMap[point.status]}
-				<div class="flex items-center justify-between rounded-lg border p-4">
-					<div>
-						<p class="font-semibold">{point.description}</p>
-						<div class="mt-1 flex items-center gap-2">
+				<Card.Root>
+					<Card.Header>
+						<Card.Title class="text-base">{point.description}</Card.Title>
+						<Card.Description class="font-mono text-xs pt-1">{point.pointId}</Card.Description>
+					</Card.Header>
+					<Card.Content class="flex items-center justify-between">
+						<div>
 							<span class="text-sm text-muted-foreground">Status:</span>
-							<span
-								class="flex items-center gap-2 rounded-full px-2 py-0.5 text-xs font-medium text-white {status.class}"
-							>
-								<div class="h-2 w-2 rounded-full bg-white/50"></div>
-								{status.label}
-							</span>
+							<Badge class="{status.className} ml-2 capitalize">{status.label}</Badge>
 						</div>
-					</div>
-					<div>
 						<Button variant="outline" size="sm" onclick={() => openUpdateModal(point)}>
 							Update
 						</Button>
-					</div>
-				</div>
+					</Card.Content>
+				</Card.Root>
 			{/each}
 		</div>
 	{:else}

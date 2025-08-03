@@ -5,6 +5,9 @@
 	import LogOut from "@lucide/svelte/icons/log-out";
 	import { Button } from '$lib/components/ui/button';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import * as Sheet from '$lib/components/ui/sheet';
+	import { isMobileMenuOpen } from '$lib/stores/navigation';
+	import { Separator } from '$lib/components/ui/separator';
 
 	const { session } = $page.data;
 </script>
@@ -13,7 +16,7 @@
 	class="flex h-14 flex-shrink-0 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6"
 >
 	<a href="/" class="flex items-center gap-2 font-semibold">
-		<!-- ... (logo svg remains the same) ... -->
+		<!-- This SVG is correct -->
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 24 24"
@@ -28,19 +31,25 @@
 			<path d="M2 17l10 5 10-5" />
 			<path d="M2 12l10 5 10-5" />
 		</svg>
-		<span>NexusMapping</span>
+		<span class="hidden md:inline-block">NexusMapping</span>
 	</a>
 
-	<!-- ▼▼▼ ADD THIS NAVIGATION BLOCK ▼▼▼ -->
 	<nav class="hidden md:flex md:gap-2">
-		<Button variant="link" href="/dashboard/map" class="text-muted-foreground hover:text-foreground"
-			>Map</Button
+		<Button
+			variant={$page.url.pathname === '/dashboard/map' ? 'secondary' : 'link'}
+			href="/dashboard/map"
+			class="text-muted-foreground hover:text-foreground"
 		>
-		<Button variant="link" href="/dashboard/data" class="text-muted-foreground hover:text-foreground"
-			>Data</Button
+			Map
+		</Button>
+		<Button
+			variant={$page.url.pathname === '/dashboard/data' ? 'secondary' : 'link'}
+			href="/dashboard/data"
+			class="text-muted-foreground hover:text-foreground"
 		>
+			Data
+		</Button>
 	</nav>
-	<!-- ▲▲▲ END OF ADDITION ▲▲▲ -->
 
 	{#if session?.user}
 		<div class="ml-auto flex items-center gap-2">
@@ -57,10 +66,56 @@
 					<LogOut class="h-5 w-5" />
 				</Button>
 			</form>
-			<button class="rounded-full border w-8 h-8 flex items-center justify-center md:hidden">
-				<Menu class="h-5 w-5" />
-				<span class="sr-only">Toggle navigation menu</span>
-			</button>
+
+			<div class="md:hidden">
+				<Button
+					variant="ghost"
+					size="icon"
+					onclick={() => ($isMobileMenuOpen = !$isMobileMenuOpen)}
+				>
+					<Menu class="h-5 w-5" />
+					<span class="sr-only">Toggle navigation menu</span>
+				</Button>
+
+				<Sheet.Root bind:open={$isMobileMenuOpen}>
+					<!-- KAI: 2. UX IMPROVEMENT - Change side from "right" to "left" -->
+					<Sheet.Content side="left">
+						<Sheet.Header>
+							<a href="/" class="flex items-center gap-2 font-semibold">
+								<!-- KAI: 1. BUG FIX - Correct the viewBox to have four numbers -->
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									class="h-6 w-6"
+								>
+									<path d="M12 2L2 7l10 5 10-5-10-5z" />
+									<path d="M2 17l10 5 10-5" />
+									<path d="M2 12l10 5 10-5" />
+								</svg>
+								<span>NexusMapping</span>
+							</a>
+						</Sheet.Header>
+						<Separator class="my-4" />
+						<nav class="grid gap-4 text-lg font-medium">
+							<a
+								href="/dashboard/map"
+								class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+								on:click={() => ($isMobileMenuOpen = false)}>Map</a
+							>
+							<a
+								href="/dashboard/data"
+								class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+								on:click={() => ($isMobileMenuOpen = false)}>Data</a
+							>
+						</nav>
+					</Sheet.Content>
+				</Sheet.Root>
+			</div>
 		</div>
 	{/if}
 </header>
