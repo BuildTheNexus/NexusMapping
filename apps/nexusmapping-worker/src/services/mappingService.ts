@@ -88,7 +88,7 @@ export async function updateMapPoint(
 
 	try {
 		const stmt = db.prepare(sql);
-await stmt.bind(...values).run();
+		await stmt.bind(...values).run();
 		return { success: true };
 	} catch (error) {
 		console.error(`D1 Database Error in updateMapPoint for ID ${pointId}:`, error);
@@ -174,8 +174,7 @@ export async function syncUser(db: D1Database, env: Env, userPayload: UserPayloa
 		return existingUser;
 	}
 
-	const adminEmails = (env.ADMIN_EMAILS || '').split(',').map((e) => e.trim());
-	const role = adminEmails.includes(userPayload.email) ? 'admin' : 'viewer';
+	const role = 'admin';
 
 	const newUser: Omit<User, 'created_at'> = {
 		id: userPayload.sub,

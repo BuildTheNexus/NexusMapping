@@ -4,6 +4,7 @@ export interface Env {
 	DB: D1Database;
 	ADMIN_APP_GOOGLE_CLIENT_ID: string;
 	ADMIN_EMAILS: string;
+	DB_RESET_SECRET: string;
 }
 
 export interface UserPayload extends JWTPayload {

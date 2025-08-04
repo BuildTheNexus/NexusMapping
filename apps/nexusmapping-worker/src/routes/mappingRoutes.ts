@@ -20,14 +20,11 @@ const RATE_LIMIT_MAX_REQUESTS = 20;
 const rateLimiter: MiddlewareHandler = async (c, next) => {
 	const ip = c.req.header('cf-connecting-ip') || 'unknown';
 	const now = Date.now();
-
 	const userRequests = requests.get(ip) || [];
 	const recentRequests = userRequests.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
-
 	if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
 		return c.json({ success: false, message: 'Too many requests, please try again later.' }, 429);
 	}
-
 	requests.set(ip, [...recentRequests, now]);
 	await next();
 };
@@ -36,6 +33,14 @@ const adminOnly: MiddlewareHandler<{ Bindings: Env; Variables: Variables }> = as
 	const user = c.get('user');
 	if (user?.role !== 'admin') {
 		return c.json({ success: false, message: 'Forbidden: Admin access required.' }, 403);
+	}
+	await next();
+};
+
+const secretKeyMiddleware: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
+	const secret = c.req.header('X-Admin-Secret');
+	if (!c.env.DB_RESET_SECRET || secret !== c.env.DB_RESET_SECRET) {
+		return c.json({ success: false, message: 'Forbidden: Invalid secret key.' }, 403);
 	}
 	await next();
 };
@@ -135,5 +140,26 @@ mappingRoutes.get('/api/map-points/:pointId', async (c) => {
 	} catch (error: any) {
 		console.error(`Error in GET /api/map-points/${c.req.param('pointId')}:`, error);
 		return c.json({ success: false, message: 'An internal server error occurred.' }, 500);
+	}
+});
+
+mappingRoutes.post('/api/admin/reset-db', secretKeyMiddleware, async (c) => {
+	try {
+		const result = await seedDatabase(c.env.DB);
+		return c.json({ success: true, message: `Sandbox reset successfully with ${result.count} points.` });
+	} catch (error: any) {
+		console.error('Error in POST /api/admin/reset-db:', error);
+		return c.json({ success: false, message: 'Failed to reset sandbox database.' }, 500);
+	}
+});
+
+mappingRoutes.post('/api/admin/test-cron', secretKeyMiddleware, async (c) => {
+	try {
+		const result = await seedDatabase(c.env.DB);
+		console.log(`Manual cron test successful. Seeded ${result.count} points.`);
+		return c.json({ success: true, message: `Manual cron test successful. Seeded ${result.count} points.` });
+	} catch (error: any) {
+		console.error('Error during manual cron test:', error);
+		return c.json({ success: false, message: 'Failed to run manual cron test.' }, 500);
 	}
 });
