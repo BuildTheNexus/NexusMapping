@@ -18,13 +18,23 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 
 const rateLimiter: MiddlewareHandler = async (c, next) => {
+	console.log('Rate Limiter Triggered. Headers:', JSON.stringify(c.req.header()));
+
+	if (c.req.header('CF-Worker')) {
+		console.log('Service Binding request detected, bypassing rate limiter.');
+		return next();
+	}
+
 	const ip = c.req.header('cf-connecting-ip') || 'unknown';
 	const now = Date.now();
+
 	const userRequests = requests.get(ip) || [];
 	const recentRequests = userRequests.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+
 	if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
 		return c.json({ success: false, message: 'Too many requests, please try again later.' }, 429);
 	}
+
 	requests.set(ip, [...recentRequests, now]);
 	await next();
 };

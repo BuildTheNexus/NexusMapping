@@ -1,0 +1,25 @@
+{
+	"name": "nexusmapping-admin",
+	"pages_build_output_dir": ".svelte-kit/cloudflare",
+	"compatibility_date": "2025-08-04",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"bindings": {
+		"NEXUS_API": {
+			"service": "nexusmapping-api-production"
+		}
+	},
+	"env": {
+		"production": {
+			"compatibility_flags": [
+				"nodejs_compat"
+			],
+			"bindings": {
+				"nexusmapping_worker": {
+					"service": "nexusmapping-api-production"
+				}
+			}
+		}
+	}
+}
