@@ -25,7 +25,7 @@
 				<Card.Description>
 					Mapping Insights, Driving Decisions.
 					<br class="hidden sm:block" />
-					Sign in to continue.
+					
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -35,6 +35,11 @@
 						Sign In with Google
 					</Button>
 				</form>
+				<p class="mt-4 px-8 text-center text-xs text-muted-foreground">
+					By signing in, you agree to our
+					<a href="/privacy" target="_blank" class="underline hover:text-primary">Privacy Policy</a>
+					and allow data collection.
+				</p>
 			</Card.Content>
 		</Card.Root>
 	</div>
@@ -58,7 +63,9 @@
 			</svg>
 			<span class="text-xl">Nexus Mapping</span>
 		</a>
-		<div class="relative w-64 overflow-hidden rounded-2xl shadow-2xl aspect-[9/16] border">
+		<div
+			class="relative w-64 overflow-hidden rounded-2xl shadow-2xl aspect-[9/16] border"
+		>
 			<video
 				bind:this={videoEl}
 				data-src="/showcase-nexus-mapping.webm"

@@ -146,3 +146,4 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 lcov.info
+.backupignore
