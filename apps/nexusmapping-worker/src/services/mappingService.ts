@@ -1,5 +1,4 @@
-// File: apps/nexusmapping-worker/src/services/mappingService.ts
-import type { MapPoint, UpdatePayload } from '../types';
+import type { MapPoint, UpdatePayload, User, UserPayload, Env } from '../types';
 
 export async function createMapPoint(
 	db: D1Database,
@@ -83,13 +82,13 @@ export async function updateMapPoint(
 		return { success: false, message: 'No fields to update.' };
 	}
 
-	values.push(pointId); // For the WHERE clause
+	values.push(pointId);
 
 	const sql = `UPDATE map_points SET ${fields.join(', ')} WHERE pointId = ?${paramIndex}`;
 
 	try {
 		const stmt = db.prepare(sql);
-		await stmt.bind(...values).run();
+await stmt.bind(...values).run();
 		return { success: true };
 	} catch (error) {
 		console.error(`D1 Database Error in updateMapPoint for ID ${pointId}:`, error);
@@ -97,7 +96,6 @@ export async function updateMapPoint(
 	}
 }
 
-// --- KAI: THIS FUNCTION HAS BEEN CORRECTED ---
 export async function seedDatabase(db: D1Database): Promise<{ count: number }> {
 	const seedLocations = [
 		{ name: 'Tenau Harbour Vicinity, Kupang', lat: -10.2, lon: 123.55 },
@@ -123,7 +121,7 @@ export async function seedDatabase(db: D1Database): Promise<{ count: number }> {
 				latitude: location.lat + latJitter,
 				longitude: location.lon + lonJitter,
 				accuracy: 5 + Math.random() * 10,
-				address: 'Generated Address', // Address is optional, but schema requires it
+				address: 'Generated Address',
 				photoId: `seed-photo-${crypto.randomUUID().slice(0, 8)}`,
 				adminNotes: Math.random() > 0.7 ? 'Admin note added for this seed.' : undefined
 			};
@@ -134,13 +132,11 @@ export async function seedDatabase(db: D1Database): Promise<{ count: number }> {
 	try {
 		await db.prepare('DELETE FROM map_points').run();
 
-		// CORRECTED: The SQL statement now includes the `address` column.
 		const stmt = db.prepare(
 			`INSERT INTO map_points (pointId, userId, timestamp, status, description, latitude, longitude, accuracy, address, photoId, adminNotes)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
 		);
 
-		// CORRECTED: The `bind` call now provides the `address` field.
 		const batch = pointsToInsert.map((p) =>
 			stmt.bind(
 				p.pointId,
@@ -151,7 +147,7 @@ export async function seedDatabase(db: D1Database): Promise<{ count: number }> {
 				p.latitude,
 				p.longitude,
 				p.accuracy,
-				p.address ?? null, // Provide address, defaulting to null
+				p.address ?? null,
 				p.photoId,
 				p.adminNotes ?? null
 			)
@@ -164,4 +160,38 @@ export async function seedDatabase(db: D1Database): Promise<{ count: number }> {
 		console.error('D1 Database Error in seedDatabase:', error);
 		throw new Error('Failed to seed the database.');
 	}
+}
+
+export async function syncUser(db: D1Database, env: Env, userPayload: UserPayload): Promise<User> {
+	if (!userPayload.sub || !userPayload.email) {
+		throw new Error('User payload is missing required fields (sub, email).');
+	}
+
+	const stmt = db.prepare('SELECT * FROM users WHERE id = ?1');
+	const existingUser = await stmt.bind(userPayload.sub).first<User>();
+
+	if (existingUser) {
+		return existingUser;
+	}
+
+	const adminEmails = (env.ADMIN_EMAILS || '').split(',').map((e) => e.trim());
+	const role = adminEmails.includes(userPayload.email) ? 'admin' : 'viewer';
+
+	const newUser: Omit<User, 'created_at'> = {
+		id: userPayload.sub,
+		email: userPayload.email,
+		name: (userPayload as any).name || null,
+		role: role
+	};
+
+	const insertStmt = db.prepare(
+		'INSERT INTO users (id, email, name, role) VALUES (?1, ?2, ?3, ?4) RETURNING *'
+	);
+	const createdUser = await insertStmt.bind(newUser.id, newUser.email, newUser.name, newUser.role).first<User>();
+
+	if (!createdUser) {
+		throw new Error('Failed to create user during sync operation.');
+	}
+
+	return createdUser;
 }

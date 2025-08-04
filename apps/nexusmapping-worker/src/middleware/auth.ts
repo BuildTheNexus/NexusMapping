@@ -1,12 +1,8 @@
-// File: apps/nexusmapping-worker/src/middleware/auth.ts
 import type { Context, Next } from 'hono';
 import * as jose from 'jose';
-import type { Env, Variables, UserPayload } from '../types';
+import type { Env, Variables, User, ContextUser } from '../types';
 
-// This is the public key endpoint for standard Google OIDC tokens.
 const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
-
-// This is the issuer for standard Google OIDC tokens.
 const GOOGLE_ISSUER = 'https://accounts.google.com';
 
 export const authMiddleware = async (c: Context<{ Bindings: Env; Variables: Variables }>, next: Next) => {
@@ -17,37 +13,33 @@ export const authMiddleware = async (c: Context<{ Bindings: Env; Variables: Vari
 	const idToken = authHeader.split('Bearer ')[1];
 
 	try {
-		// Create a JWKS (JSON Web Key Set) from Google's public endpoint.
-		// This is used to verify the signature of the token.
 		const JWKS = jose.createRemoteJWKSet(new URL(GOOGLE_JWKS_URL));
 
-		// We must validate that the token was intended for our specific application.
-		// This is done by checking the 'audience' (aud) claim in the token.
 		if (!c.env.ADMIN_APP_GOOGLE_CLIENT_ID) {
 			console.error('CRITICAL: ADMIN_APP_GOOGLE_CLIENT_ID is not set in the worker environment.');
 			return c.json({ success: false, message: 'Server configuration error.' }, 500);
 		}
 
-		// Verify the token's signature, issuer, and audience.
 		const { payload } = await jose.jwtVerify(idToken, JWKS, {
 			issuer: GOOGLE_ISSUER,
-			audience: c.env.ADMIN_APP_GOOGLE_CLIENT_ID,
+			audience: c.env.ADMIN_APP_GOOGLE_CLIENT_ID
 		});
 
-		// Ensure the token contains a user identifier.
-		if (!payload.sub) {
-			return c.json({ success: false, message: 'Forbidden: Token is missing user identifier.' }, 403);
+		if (!payload.sub || typeof payload.email !== 'string') {
+			return c.json({ success: false, message: 'Forbidden: Token is missing or has invalid user identifier.' }, 403);
 		}
 
-		// Create a user object from the token's payload.
-		const user: UserPayload = {
+		const stmt = c.env.DB.prepare('SELECT id, email, role FROM users WHERE id = ?1');
+		const dbUser = await stmt.bind(payload.sub).first<User>();
+
+		const userContext: ContextUser = {
+			...payload,
 			uid: payload.sub,
-			email: (payload as any).email,
-			...payload
+			email: payload.email,
+			role: dbUser?.role || 'viewer'
 		};
 
-		// Set the user object in the context for downstream routes to use.
-		c.set('user', user);
+		c.set('user', userContext);
 		await next();
 	} catch (error: any) {
 		console.error('Token verification failed:', error.code || error.message);
