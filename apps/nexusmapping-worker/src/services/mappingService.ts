@@ -171,16 +171,22 @@ export async function syncUser(db: D1Database, env: Env, userPayload: UserPayloa
 	const existingUser = await stmt.bind(userPayload.sub).first<User>();
 
 	if (existingUser) {
+		if (existingUser.role !== 'admin') {
+			const updateStmt = db.prepare('UPDATE users SET role = ?1 WHERE id = ?2 RETURNING *');
+			const updatedUser = await updateStmt.bind('admin', existingUser.id).first<User>();
+			if (!updatedUser) {
+				throw new Error('Failed to update user role during sync.');
+			}
+			return updatedUser;
+		}
 		return existingUser;
 	}
-
-	const role = 'admin';
 
 	const newUser: Omit<User, 'created_at'> = {
 		id: userPayload.sub,
 		email: userPayload.email,
 		name: (userPayload as any).name || null,
-		role: role
+		role: 'admin'
 	};
 
 	const insertStmt = db.prepare(

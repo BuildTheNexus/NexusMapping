@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData, ActionData } from './$types';
+	import type { PageData } from './$types';
 	import type { FeatureCollection } from 'geojson';
 	import {
 		MapLibre,
@@ -10,7 +10,6 @@
 	} from 'svelte-maplibre-gl';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import type { MapPoint } from '../../../../../nexusmapping-worker/src/types';
-	import maplibregl from 'maplibre-gl';
 	import type { Map, MapMouseEvent, LngLatLike, GeoJSONSource as MapLibreGeoJSONSource } from 'maplibre-gl';
 	import StyleSwitcher, { type MapStyle } from '$lib/components/map/StyleSwitcher.svelte';
 	import * as Card from '$lib/components/ui/card';
@@ -20,13 +19,18 @@
 	import * as Select from '$lib/components/ui/select';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
 
-	const { data, form }: { data: PageData; form: ActionData } = $props();
+	const { data }: { data: PageData } = $props();
 
 	let map: Map | undefined = $state();
 	let isDetailModalOpen = $state(false);
 	let selectedPointDetails: MapPoint | null = $state(null);
 	let selectedPointStatus: MapPoint['status'] | undefined = $state();
+	let isSubmitting = $state(false);
+	let submissionStatus: 'success' | 'error' | null = $state(null);
+	let submissionMessage: string | null = $state(null);
 
 	const mapStyles: MapStyle[] = [
 		{
@@ -93,6 +97,15 @@
 		{ value: 'rejected', label: 'Rejected' }
 	];
 
+	function openDetailModal(point: MapPoint) {
+		selectedPointDetails = point;
+		selectedPointStatus = point.status;
+		submissionStatus = null;
+		submissionMessage = null;
+		isSubmitting = false;
+		isDetailModalOpen = true;
+	}
+
 	$effect(() => {
 		const currentMap = map;
 		if (!currentMap) return;
@@ -120,9 +133,7 @@
 
 		const handlePointClick = (e: MapMouseEvent & { features?: any[] }) => {
 			if (e.features && e.features.length > 0) {
-				selectedPointDetails = e.features[0].properties as MapPoint;
-				selectedPointStatus = selectedPointDetails.status;
-				isDetailModalOpen = true;
+				openDetailModal(e.features[0].properties as MapPoint);
 			}
 		};
 
@@ -132,7 +143,7 @@
 		currentMap.on('click', 'unclustered-point', handlePointClick);
 
 		return () => {
-			if (currentMap.isStyleLoaded()) {
+			if (currentMap.isStyleLoaded() && currentMap.getSource('map-points-source')) {
 				currentMap.off('click', 'clusters', handleClusterClick);
 				currentMap.off('mouseenter', 'clusters', handleClusterMouseEnter);
 				currentMap.off('mouseleave', 'clusters', handleClusterMouseLeave);
@@ -162,10 +173,26 @@
 				action="/dashboard/data?/updateStatus"
 				class="mt-4 space-y-4"
 				use:enhance={() => {
+					isSubmitting = true;
+					submissionStatus = null;
+					submissionMessage = null;
+
 					return async ({ result }) => {
 						if (result.type === 'success') {
-							isDetailModalOpen = false;
-							await invalidateAll();
+							submissionStatus = 'success';
+							submissionMessage = 'Status updated successfully!';
+							setTimeout(async () => {
+								isDetailModalOpen = false;
+								await invalidateAll();
+							}, 1500);
+						} else if (result.type === 'failure') {
+							submissionStatus = 'error';
+							submissionMessage =
+								(result.data as { message?: string })?.message ??
+								'An unexpected error occurred. Please try again.';
+							isSubmitting = false;
+						} else {
+							isSubmitting = false;
 						}
 					};
 				}}
@@ -174,7 +201,7 @@
 				<div>
 					<label for="status" class="text-sm font-medium">Update Status</label>
 					<Select.Root name="status" type="single" bind:value={selectedPointStatus}>
-						<Select.Trigger class="w-full mt-1">
+						<Select.Trigger class="w-full mt-1" disabled={isSubmitting}>
 							{selectedPointStatus
 								? statusDisplayMap[selectedPointStatus]?.label
 								: 'Select a status'}
@@ -186,9 +213,52 @@
 						</Select.Content>
 					</Select.Root>
 				</div>
+
+				{#if submissionMessage}
+					<div
+						class="flex items-center gap-2 rounded-lg p-3 text-sm {submissionStatus === 'success'
+							? 'bg-green-500/10 text-green-300'
+							: 'bg-destructive/10 text-red-400'}"
+					>
+						{#if submissionStatus === 'success'}
+							<CircleCheck class="h-5 w-5" />
+						{:else}
+							<CircleAlert class="h-5 w-5" />
+						{/if}
+						<span class="font-medium">{submissionMessage}</span>
+					</div>
+				{/if}
+
 				<Dialog.Footer>
-					<Button type="submit" disabled={selectedPointStatus === selectedPointDetails.status}>
-						Save Changes
+					<Button
+						type="submit"
+						disabled={selectedPointStatus === selectedPointDetails.status || isSubmitting}
+					>
+						{#if isSubmitting}
+							<svg
+								class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									class="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="4"
+								></circle>
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								></path>
+							</svg>
+							Saving...
+						{:else}
+							Save Changes
+						{/if}
 					</Button>
 				</Dialog.Footer>
 			</form>
@@ -238,6 +308,7 @@
 					id="map-points-source"
 					data={geojsonData}
 					cluster={true}
+					clusterMaxZoom={14}
 					clusterRadius={50}
 				>
 					<CircleLayer
@@ -261,6 +332,7 @@
 						filter={['has', 'point_count']}
 						layout={{
 							'text-field': '{point_count_abbreviated}',
+							'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
 							'text-size': 12
 						}}
 						paint={{ 'text-color': '#000' }}

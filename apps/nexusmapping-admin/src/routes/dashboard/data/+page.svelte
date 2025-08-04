@@ -13,6 +13,8 @@
 	import { page } from '$app/stores';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import { Input } from '$lib/components/ui/input';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -23,6 +25,9 @@
 	let selectedStatus = $state<MapPoint['status'] | undefined>(undefined);
 	let seeding = $state(false);
 	let statusFilter = $state(data.statusFilter || '');
+	let isSubmitting = $state(false);
+	let submissionStatus: 'success' | 'error' | null = $state(null);
+	let submissionMessage: string | null = $state(null);
 
 	const statusDisplayMap: Record<string, { label: string; className: string }> = {
 		new: {
@@ -58,6 +63,9 @@
 	function openUpdateModal(point: MapPoint) {
 		selectedPoint = point;
 		selectedStatus = point.status;
+		submissionStatus = null;
+		submissionMessage = null;
+		isSubmitting = false;
 		isUpdateModalOpen = true;
 	}
 
@@ -129,20 +137,34 @@
 			action="?/updateStatus"
 			class="mt-4 space-y-4"
 			use:enhance={() => {
+				isSubmitting = true;
+				submissionStatus = null;
+				submissionMessage = null;
 				return async ({ result }) => {
 					if (result.type === 'success') {
-						isUpdateModalOpen = false;
-						await invalidateAll();
+						submissionStatus = 'success';
+						submissionMessage = 'Status updated successfully!';
+						setTimeout(async () => {
+							isUpdateModalOpen = false;
+							await invalidateAll();
+						}, 1500);
+					} else if (result.type === 'failure') {
+						submissionStatus = 'error';
+						submissionMessage =
+							(result.data as { message?: string })?.message ??
+							'An unexpected error occurred. Please try again.';
+						isSubmitting = false;
+					} else {
+						isSubmitting = false;
 					}
 				};
 			}}
 		>
 			<input type="hidden" name="pointId" value={selectedPoint?.pointId} />
-			<input type="hidden" name="status" value={selectedStatus} />
 			<div>
 				<label for="status" class="text-sm font-medium">New Status</label>
-				<Select.Root type="single" bind:value={selectedStatus}>
-					<Select.Trigger class="w-full mt-1">
+				<Select.Root name="status" type="single" bind:value={selectedStatus}>
+					<Select.Trigger class="w-full mt-1" disabled={isSubmitting}>
 						{selectedStatus ? statusDisplayMap[selectedStatus]?.label : 'Select a status'}
 					</Select.Trigger>
 					<Select.Content>
@@ -152,8 +174,50 @@
 					</Select.Content>
 				</Select.Root>
 			</div>
+
+			{#if submissionMessage}
+				<div
+					class="flex items-center gap-2 rounded-lg p-3 text-sm {submissionStatus === 'success'
+						? 'bg-green-500/10 text-green-300'
+						: 'bg-destructive/10 text-red-400'}"
+				>
+					{#if submissionStatus === 'success'}
+						<CircleCheck class="h-5 w-5" />
+					{:else}
+						<CircleAlert class="h-5 w-5" />
+					{/if}
+					<span class="font-medium">{submissionMessage}</span>
+				</div>
+			{/if}
+
 			<Dialog.Footer>
-				<Button type="submit" disabled={!selectedStatus}>Save Changes</Button>
+				<Button type="submit" disabled={!selectedStatus || isSubmitting}>
+					{#if isSubmitting}
+						<svg
+							class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							></path>
+						</svg>
+						Saving...
+					{:else}
+						Save Changes
+					{/if}
+				</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

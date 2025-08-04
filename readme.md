@@ -17,7 +17,7 @@
 
 The platform provides a complete administrative dashboard for visualizing, managing, and analyzing geographic data points, architected as a "Public Sandbox" that automatically resets hourly for an interactive and risk-free user experience.
 
-**[Live Demo Link Not Yet Available]**
+[![Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge)](https://mapping.aitiglobal.link)
 
 ---
 
@@ -165,4 +165,4 @@ This project served as a testbed for several key architectural patterns:
 
 ---
 
-Built by **AiTi Global Nexus**.
+Built by **PT AiTi Global Nexus**.

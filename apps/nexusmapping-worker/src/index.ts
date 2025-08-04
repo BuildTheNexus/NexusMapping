@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { mappingRoutes } from './routes/mappingRoutes';
 import { seedDatabase } from './services/mappingService';
 import type { Env } from './types';
+import { RateLimiter } from './lib/rateLimiter';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -24,3 +25,5 @@ export default {
 		}
 	}
 };
+
+export { RateLimiter };

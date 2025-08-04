@@ -1,4 +1,8 @@
-// This file exports the authentication handler from our auth.ts configuration.
-// SvelteKit automatically runs this code for every request made to the server,
-// effectively making our authentication system active across the entire application.
-export { handle } from './auth';
+import { createAuthHelpers } from './auth';
+import type { Handle } from '@sveltejs/kit';
+
+export const handle: Handle = ({ event, resolve }) => {
+	const workerFetcher = event.platform?.env.nexusmapping_worker;
+	const { handle: authHandle } = createAuthHelpers(workerFetcher);
+	return authHandle({ event, resolve });
+};

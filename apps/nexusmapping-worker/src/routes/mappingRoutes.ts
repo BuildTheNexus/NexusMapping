@@ -13,29 +13,22 @@ import { authMiddleware } from '../middleware/auth';
 
 export const mappingRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-const requests = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 20;
+const authRateLimiter: MiddlewareHandler<{ Bindings: Env; Variables: Variables }> = async (c, next) => {
+	const user = c.get('user');
 
-const rateLimiter: MiddlewareHandler = async (c, next) => {
-	console.log('Rate Limiter Triggered. Headers:', JSON.stringify(c.req.header()));
-
-	if (c.req.header('CF-Worker')) {
-		console.log('Service Binding request detected, bypassing rate limiter.');
-		return next();
+	if (!user?.uid) {
+		return c.json({ success: false, message: 'Rate limiter requires an authenticated user.' }, 401);
 	}
 
-	const ip = c.req.header('cf-connecting-ip') || 'unknown';
-	const now = Date.now();
+	const id = c.env.RATE_LIMITER.idFromName(user.uid);
+	const stub = c.env.RATE_LIMITER.get(id);
 
-	const userRequests = requests.get(ip) || [];
-	const recentRequests = userRequests.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+	const response = await stub.fetch('https://limiter/increment');
 
-	if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
-		return c.json({ success: false, message: 'Too many requests, please try again later.' }, 429);
+	if (response.status === 429) {
+		return c.json({ success: false, message: 'Too many requests. Please try again in a minute.' }, 429);
 	}
 
-	requests.set(ip, [...recentRequests, now]);
 	await next();
 };
 
@@ -54,8 +47,6 @@ const secretKeyMiddleware: MiddlewareHandler<{ Bindings: Env }> = async (c, next
 	}
 	await next();
 };
-
-mappingRoutes.use('/api/*', rateLimiter);
 
 const toPublicMapPoint = (point: MapPoint) => ({
 	pointId: point.pointId,
@@ -91,7 +82,7 @@ mappingRoutes.post('/api/map-points', async (c) => {
 	}
 });
 
-mappingRoutes.patch('/api/map-points/:pointId', authMiddleware, adminOnly, async (c) => {
+mappingRoutes.patch('/api/map-points/:pointId', authMiddleware, authRateLimiter, adminOnly, async (c) => {
 	try {
 		const { pointId } = c.req.param();
 		if (!pointId) {
@@ -115,7 +106,7 @@ mappingRoutes.patch('/api/map-points/:pointId', authMiddleware, adminOnly, async
 	}
 });
 
-mappingRoutes.post('/api/seed', authMiddleware, adminOnly, async (c) => {
+mappingRoutes.post('/api/seed', authMiddleware, authRateLimiter, adminOnly, async (c) => {
 	try {
 		const result = await seedDatabase(c.env.DB);
 		return c.json({ success: true, message: `Database seeded successfully with ${result.count} points.` });

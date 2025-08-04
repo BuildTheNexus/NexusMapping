@@ -2,6 +2,7 @@ import type { JWTPayload } from 'jose';
 
 export interface Env {
 	DB: D1Database;
+	RATE_LIMITER: DurableObjectNamespace;
 	ADMIN_APP_GOOGLE_CLIENT_ID: string;
 	ADMIN_EMAILS: string;
 	DB_RESET_SECRET: string;
