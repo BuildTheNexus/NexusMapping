@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "nexusmapping-worker",
+	"name": "nexusmapping-api",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-08-01",
 	"observability": {
@@ -15,5 +15,16 @@
 			"database_name": "nexusmapping-db",
 			"database_id": "f5cda2b9-a23f-49f3-ad3c-5cd448baa207"
 		}
-	]
+	],
+	"env": {
+		"production": {
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "nexusmapping-db-prod",
+					"database_id": "de3a5583-784a-4ae2-9a33-3c6c28b8d559"
+				}
+			]
+		}
+	}
 }

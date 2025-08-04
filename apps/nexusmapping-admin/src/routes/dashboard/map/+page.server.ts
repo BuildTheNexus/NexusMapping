@@ -2,17 +2,19 @@ import type { PageServerLoad } from './$types';
 import type { MapPoint } from '../../../../../nexusmapping-worker/src/types';
 import { MAPTILER_API_KEY } from '$env/static/private';
 
-const WORKER_API_URL = 'http://127.0.0.1:8788/api/map-points';
-
 interface ApiResponse {
 	success: boolean;
 	points?: MapPoint[];
 	message?: string;
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ platform }) => {
 	try {
-		const response = await fetch(WORKER_API_URL);
+		if (!platform?.env.nexusmapping_worker) {
+			throw new Error('API service binding not found.');
+		}
+
+		const response = await platform.env.nexusmapping_worker.fetch('https://api.internal/api/map-points');
 
 		if (!response.ok) {
 			return {
@@ -27,7 +29,6 @@ export const load: PageServerLoad = async () => {
 			return { points: [], error: data.message || 'API error.' };
 		}
 
-		// --- KAI: ADD THIS SUMMARY CALCULATION LOGIC ---
 		const summary: Record<string, number> = {
 			new: 0,
 			in_progress: 0,
@@ -40,17 +41,16 @@ export const load: PageServerLoad = async () => {
 				summary[point.status]++;
 			}
 		}
-		// --- END OF ADDITION ---
 
 		return {
 			points: data.points,
 			maptilerKey: MAPTILER_API_KEY,
-			summary // <-- Pass the calculated summary to the page
+			summary
 		};
-	} catch (error) {
+	} catch (error: any) {
 		return {
 			points: [],
-			error: 'Could not connect to the API worker. Is it running?'
+			error: error.message || 'Could not connect to the API worker.'
 		};
 	}
 };

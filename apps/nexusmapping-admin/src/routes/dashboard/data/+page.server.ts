@@ -3,17 +3,19 @@ import type { PageServerLoad, Actions } from './$types';
 import type { MapPoint, UpdatePayload } from '../../../../../nexusmapping-worker/src/types';
 import { triggerSeed } from '$lib/server/seeding';
 
-const WORKER_API_URL = 'http://127.0.0.1:8788/api/map-points';
-
 interface ApiResponse {
 	success: boolean;
 	points?: MapPoint[];
 	message?: string;
 }
 
-export const load: PageServerLoad = async ({ fetch, url }) => {
+export const load: PageServerLoad = async ({ platform, url }) => {
 	try {
-		const response = await fetch(WORKER_API_URL);
+		if (!platform?.env.nexusmapping_worker) {
+			throw new Error('API service binding not found.');
+		}
+		const response = await platform.env.nexusmapping_worker.fetch('https://api.internal/api/map-points');
+
 		if (!response.ok) {
 			return { points: [], error: `API responded with status: ${response.status}` };
 		}
@@ -54,17 +56,20 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
 			searchQuery,
 			statusFilter
 		};
-	} catch (error) {
+	} catch (error: any) {
 		return {
 			points: [],
 			pagination: { currentPage: 1, totalPages: 1, totalItems: 0 },
-			error: 'Could not connect to the API worker. Is it running?'
+			error: error.message || 'Could not connect to the API worker.'
 		};
 	}
 };
 
 export const actions: Actions = {
-	updateStatus: async ({ locals, request, fetch }) => {
+	updateStatus: async ({ locals, request, platform }) => {
+		if (!platform?.env.nexusmapping_worker) {
+			return fail(500, { success: false, message: 'API service binding not found.' });
+		}
 		const session = await locals.auth();
 		if (!session?.user) {
 			return fail(401, { success: false, message: 'Unauthorized' });
@@ -77,14 +82,17 @@ export const actions: Actions = {
 		}
 		try {
 			const payload: UpdatePayload = { status: status as MapPoint['status'] };
-			const response = await fetch(`${WORKER_API_URL}/${pointId}`, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${session.id_token}`
-				},
-				body: JSON.stringify(payload)
-			});
+			const response = await platform.env.nexusmapping_worker.fetch(
+				`https://api.internal/api/map-points/${pointId}`,
+				{
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${session.id_token}`
+					},
+					body: JSON.stringify(payload)
+				}
+			);
 			if (!response.ok) {
 				const errorBody = (await response.json()) as { message?: string };
 				return fail(response.status, {

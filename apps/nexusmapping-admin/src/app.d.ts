@@ -19,6 +19,17 @@ declare global {
 		interface Locals {
 			getSession(): Promise<Session | null>;
 		}
+
+		// v-- ADD THIS ENTIRE INTERFACE --v
+		interface Platform {
+			env: {
+				nexusmapping_worker: Fetcher;
+			};
+			context: {
+				waitUntil(promise: Promise<any>): void;
+			};
+			caches: CacheStorage & { default: Cache };
+		}
 	}
 }
 
